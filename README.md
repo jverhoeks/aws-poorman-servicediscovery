@@ -50,3 +50,45 @@ The following permission is required to update the record
     ]
 }
 ```
+
+
+#E CS/Docker Integration
+
+Find the entrypoint location in the original Dockerfile or just inspect. In this case /usr/local/bin/docker-entrypoint.sh
+
+## 1. Create Custom Entrypoint.sh
+```bash
+#!/bin/bash
+
+[[ -n ${SD_DNSRECORD} && -n ${SD_DNSZONE} ]] && /usr/local/bin/poorman-sd -r "${SD_DNSRECORD}" -z "${SD_DNSZONE}"
+
+/usr/local/bin/docker-entrypoint.sh "$*"
+```
+
+2. Add our tool and custom entrypoint
+# Add tool for service discovery
+```
+COPY poorman-sd /usr/local/bin
+RUN chmod 755 /usr/local/bin/poorman-sd
+
+# add Custom entrypoint
+COPY customdocker-entrypoint.sh /usr/local/bin
+RUN chmod 755 /usr/local/bin/customdocker-entrypoint.sh
+
+# point entrypoint to our entrypoint
+ENTRYPOINT ["/usr/local/bin/customdocker-entrypoint.sh"]
+```
+
+3. Add the variable to the ECS or docker task definition
+```yaml
+  "environment": [
+      {
+        "name": "SD_DNSRECORD",
+        "value": "test.myzone.test"
+      },
+      {
+        "name": "SD_DNSZONE",
+        "value": "AWSZONEID32"
+      }
+  ]
+```
